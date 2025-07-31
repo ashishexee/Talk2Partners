@@ -84,6 +84,7 @@ class AuthService {
     await prefs.setString('user_id', uid);
     await prefs.setString('user_email', email);
     await prefs.setString('user_name', name);
+    await prefs.setBool('is_admin', false);
   }
 
   Future<void> signOut() async {

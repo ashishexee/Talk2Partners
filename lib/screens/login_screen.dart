@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talk2partners/core/theme/app_colors.dart';
 import 'package:talk2partners/core/widgets/premium_button.dart';
 import 'package:talk2partners/core/widgets/premium_text_fields.dart';
+import 'package:talk2partners/screens/admin_screen.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import 'home_screen.dart';
-
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
+
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with TickerProviderStateMixin {
   final _emailController = TextEditingController();
@@ -22,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   bool _isSignUp = false;
+
   @override
   void initState() {
     super.initState();
@@ -44,9 +47,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         );
     _animationController.forward();
   }
+
   @override
   Widget build(BuildContext context) {
-
     ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) {
@@ -69,6 +72,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            physics: BouncingScrollPhysics(),
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: _formKey,
@@ -96,6 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ),
     );
   }
+
   Widget _buildHeader() {
     return Column(
       children: [
@@ -120,7 +125,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
         const SizedBox(height: 32),
-
         ShaderMask(
           shaderCallback: (bounds) =>
               AppColors.primaryGradient.createShader(bounds),
@@ -147,6 +151,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ],
     );
   }
+
   Widget _buildFormContent(AsyncValue<UserModel?> authState) {
     return Container(
       padding: const EdgeInsets.all(32),
@@ -229,10 +234,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             onPressed: () => setState(() => _isSignUp = !_isSignUp),
             isSecondary: true,
           ),
+          const SizedBox(height: 16),
+          // Admin Login Button
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.orange.withOpacity(0.1),
+                  Colors.red.withOpacity(0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.admin_panel_settings,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Administrator Access',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                PremiumButton(
+                  text: 'Login as ADMIN',
+                  onPressed: _handleAdminLogin,
+                  icon: Icons.security,
+                  isExpanded: true,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+
   Widget _buildErrorContainer(String error) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -259,6 +309,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ),
     );
   }
+
   String _getErrorMessage(String error) {
     if (error.contains('user-not-found')) {
       return 'No user found with this email.';
@@ -274,6 +325,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       return 'Invalid Credentials';
     }
   }
+
   void _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
     final authNotifier = ref.read(authStateProvider.notifier);
@@ -289,6 +341,142 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
     }
   }
+
+  void _handleAdminLogin() {
+    // Show admin login dialog
+    showDialog(
+      context: context,
+      builder: (context) => _buildAdminLoginDialog(),
+    );
+  }
+
+  Widget _buildAdminLoginDialog() {
+    final adminEmailController = TextEditingController();
+    final adminPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.admin_panel_settings,
+                      color: Colors.orange.shade600, size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Admin Login',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              PremiumTextField(
+                controller: adminEmailController,
+                label: 'Admin Email',
+                hint: 'Enter admin email',
+                prefixIcon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter an email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              PremiumTextField(
+                controller: adminPasswordController,
+                label: 'Admin Password',
+                hint: 'Enter admin password',
+                prefixIcon: Icons.lock_outline,
+                obscureText: true,
+                showVisibilityToggle: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a password';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 32),
+              PremiumButton(
+                text: 'Login',
+                icon: Icons.security,
+                onPressed: () async {
+                  if (!formKey.currentState!.validate()) return;
+
+                  if (_validateAdminCredentials(
+                    adminEmailController.text.trim(),
+                    adminPasswordController.text.trim(),
+                  )) {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('is_admin', true);
+
+                    if (mounted) {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminHomeScreen(),
+                        ),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Invalid Admin Credentials'),
+                          backgroundColor: AppColors.error,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              PremiumButton(
+                text: 'Cancel',
+                onPressed: () => Navigator.pop(context),
+                isSecondary: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _validateAdminCredentials(String email, String password) {
+    return email == 'admin@gmail.com' && password == 'admin123';
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -297,4 +485,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.dispose();
   }
 }
-

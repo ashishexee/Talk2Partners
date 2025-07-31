@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talk2partners/core/theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/admin_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,8 @@ void main() async {
 
   runApp(const ProviderScope(child: MyApp()));
 }
+
+enum AuthStatus { none, user, admin }
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -21,26 +24,39 @@ class MyApp extends ConsumerWidget {
       title: 'Talk2Partners',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: FutureBuilder<bool>(
+      home: FutureBuilder<AuthStatus>(
         future: _checkAuthState(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const SplashScreen();
           }
-          if (snapshot.data == true) {
-            return const HomeScreen();
-          } else {
-            return const LoginScreen();
+          switch (snapshot.data) {
+            case AuthStatus.admin:
+              return const AdminHomeScreen();
+            case AuthStatus.user:
+              return const HomeScreen();
+            default:
+              return const LoginScreen();
           }
         },
       ),
     );
   }
 
-  Future<bool> _checkAuthState() async {
+  Future<AuthStatus> _checkAuthState() async {
     final prefs = await SharedPreferences.getInstance();
+    final isAdmin = prefs.getBool('is_admin') ?? false;
+
+    if (isAdmin) {
+      return AuthStatus.admin;
+    }
+
     final userId = prefs.getString('user_id');
-    return userId != null && userId.isNotEmpty;
+    if (userId != null && userId.isNotEmpty) {
+      return AuthStatus.user;
+    }
+
+    return AuthStatus.none;
   }
 }
 
